@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     embedder_provider: EmbedderProvider = "openai"
     openai_embedding_model: str = "text-embedding-3-small"
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    # Must match the `chunks.embedding` column dimension in db/migrations —
+    # 1536 for OpenAI text-embedding-3-small, 384 for the local fallback.
+    embedding_dim: int = 1536
 
     # --- per-node model assignment ---
     # Default split: Groq (fast Llama) for planner + drafter; OpenAI for

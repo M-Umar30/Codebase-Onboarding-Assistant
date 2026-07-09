@@ -10,7 +10,7 @@ regenerate, or ship the answer.
 
 - [x] Phase 0 — Skeleton: repo layout, frozen schemas, Postgres+pgvector,
       config, LLM/embedder ports
-- [ ] Phase 1 — Dumb-but-working pipeline
+- [x] Phase 1 — Dumb-but-working pipeline
 - [ ] Phase 2 — Critic standalone + hallucination fixture set
 - [ ] Phase 3 — Wire the critic loop into LangGraph
 - [ ] Phase 4 — Planner + syntax-aware chunking
