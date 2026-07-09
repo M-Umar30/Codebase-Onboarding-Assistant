@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: onboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: onboard
+      POSTGRES_PASSWORD: onboard
+      POSTGRES_DB: onboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - onboard_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onboard -d onboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  onboard_pgdata:
