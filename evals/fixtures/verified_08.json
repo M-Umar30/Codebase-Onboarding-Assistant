@@ -1,0 +1,20 @@
+{
+  "id": "verified_08",
+  "category": "verified",
+  "question": "What does get_authorization_scheme_param return for a missing header?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "get_authorization_scheme_param returns two empty strings when given no Authorization header value [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/utils.py",
+        "start_line": 1,
+        "end_line": 7,
+        "symbol": "get_authorization_scheme_param",
+        "claim": "get_authorization_scheme_param returns two empty strings when given no Authorization header value."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "verified"}]
+}

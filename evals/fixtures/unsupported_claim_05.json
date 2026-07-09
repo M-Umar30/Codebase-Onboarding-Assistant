@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_05",
+  "category": "unsupported_claim",
+  "question": "Does Hono's basicAuth cache verified credentials?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "This code caches the verified user's credentials in memory so future requests skip re-verification [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/basic_auth.ts",
+        "start_line": 68,
+        "end_line": 73,
+        "symbol": null,
+        "claim": "This code caches the verified user's credentials in memory so future requests skip re-verification."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

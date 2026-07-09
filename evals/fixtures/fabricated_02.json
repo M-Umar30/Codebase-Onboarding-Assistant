@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_02",
+  "category": "fabricated",
+  "question": "Where does FastAPI parse the refresh token out of the Authorization header?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "The refresh token is extracted from the Authorization header here [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/utils.py",
+        "start_line": 100,
+        "end_line": 120,
+        "symbol": null,
+        "claim": "Parses the refresh token out of the Authorization header."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

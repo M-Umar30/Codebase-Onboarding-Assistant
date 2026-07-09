@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_05",
+  "category": "wrong_location",
+  "question": "How does Hono's basic auth middleware compare passwords?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "basicAuthMiddleware hashes the incoming password with SHA-256 before comparing it to the configured password [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/basic_auth.ts",
+        "start_line": 56,
+        "end_line": 80,
+        "symbol": "basicAuthMiddleware",
+        "claim": "basicAuthMiddleware hashes the incoming password with SHA-256 before comparing it to the configured password."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

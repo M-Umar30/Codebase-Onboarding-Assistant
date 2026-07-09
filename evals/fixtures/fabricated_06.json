@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_06",
+  "category": "fabricated",
+  "question": "Does Hono's cors() middleware check for a CSRF token?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "cors() blocks any request missing a valid CSRF token [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/cors.ts",
+        "start_line": 200,
+        "end_line": 210,
+        "symbol": null,
+        "claim": "cors() blocks requests missing a valid CSRF token."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

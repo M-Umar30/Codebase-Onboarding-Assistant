@@ -1,4 +1,4 @@
-"""app/prompts.py — prompt text for the drafter and synthesizer nodes.
+"""app/prompts.py — prompt text for the drafter, synthesizer, and critic nodes.
 
 Kept out of node modules so prompt wording can be iterated on (and, later,
 eval'd) without touching pipeline code.
@@ -6,7 +6,7 @@ eval'd) without touching pipeline code.
 
 from __future__ import annotations
 
-from app.schemas import DraftAnswer, RetrievedChunk
+from app.schemas import Citation, CitationVerdict, DraftAnswer, RetrievedChunk
 
 DRAFTER_SYSTEM_PROMPT = """You are the drafter agent in a codebase-onboarding \
 assistant. You answer questions about an unfamiliar codebase using ONLY the \
@@ -102,3 +102,107 @@ def build_synthesizer_prompt(question: str, draft: DraftAnswer) -> tuple[str, st
         citations=citations,
     )
     return SYNTHESIZER_SYSTEM_PROMPT, user_prompt
+
+
+SEMANTIC_SYSTEM_PROMPT = """You are the semantic verification layer of the \
+critic agent in a codebase-onboarding assistant. Every citation given to you \
+has already passed mechanical checks: its file exists, its cited lines are \
+in range, and they match code that was actually retrieved as evidence. Your \
+only job is to judge whether the code at each citation's location genuinely \
+supports the claim made about it.
+
+Rules:
+- For each citation, decide whether the cited code content supports its \
+claim (`verified`) or whether the claim misstates, overstates, or invents \
+behavior not actually present in the code (`unsupported_claim`) — the code \
+and its location are real either way; only the claim's accuracy is in \
+question.
+- You MUST return exactly one verdict per citation given to you, using its \
+exact `citation_id` — do not add, drop, merge, or renumber citations.
+- `status` must be either "verified" or "unsupported_claim" — never any \
+other value. The mechanical layer already ruled out fabricated/\
+wrong_location for every citation you're given.
+- `checked_semantically` must always be `true`.
+- `reasoning` should briefly reference the actual code to justify the \
+verdict.
+"""
+
+SEMANTIC_USER_TEMPLATE = """Citations to verify:
+
+{citation_blocks}
+
+Return one verdict per citation_id above, following the rules in your \
+instructions."""
+
+
+def format_citations_for_semantic_check(
+    citations_with_content: list[tuple[Citation, str]],
+) -> str:
+    blocks = []
+    for citation, content in citations_with_content:
+        symbol = f" ({citation.symbol})" if citation.symbol else ""
+        blocks.append(
+            f"[citation_id {citation.id}] {citation.file_path}:"
+            f"{citation.start_line}-{citation.end_line}{symbol}\n"
+            f"Claim: {citation.claim}\n"
+            f"Code:\n```\n{content}\n```"
+        )
+    return "\n\n".join(blocks)
+
+
+def build_semantic_prompt(citations_with_content: list[tuple[Citation, str]]) -> tuple[str, str]:
+    """Returns (system_prompt, user_prompt) for the semantic layer's batched
+    structured call. Only called with mechanically-passed citations."""
+    citation_blocks = format_citations_for_semantic_check(citations_with_content)
+    return SEMANTIC_SYSTEM_PROMPT, SEMANTIC_USER_TEMPLATE.format(citation_blocks=citation_blocks)
+
+
+ROUTE_SYSTEM_PROMPT = """You are the routing layer of the critic agent in a \
+codebase-onboarding assistant. You receive the original question and the \
+per-citation verdicts already produced by mechanical and semantic \
+verification, and you decide what happens next. You do NOT re-verify \
+citations or restate them — only decide the route.
+
+Choose exactly one route:
+- `proceed`: ship to the synthesizer, which will drop any unverified \
+citations from the final answer. Choose this when the verified citations \
+are enough to answer the question, even if some individual citations were \
+rejected.
+- `re_retrieve`: there is an evidence gap — some claim in the question isn't \
+backed by any verified citation, and better retrieval could fix it (this is \
+typical when citations came back `fabricated` or `wrong_location`). You \
+MUST provide at least one item in `refined_queries`: concrete, narrower \
+search queries likely to find the missing evidence.
+- `regenerate`: the evidence itself is fine, but the draft misused or \
+misstated it (typical when citations came back `unsupported_claim`). You \
+MUST provide `regeneration_guidance`: concrete instructions for what the \
+drafter should fix.
+
+`reasoning` should explain the route choice in terms of the verdicts you \
+were given.
+"""
+
+ROUTE_USER_TEMPLATE = """Original question: {question}
+
+Per-citation verdicts:
+{verdict_blocks}
+
+Decide the route now, following the rules in your instructions."""
+
+
+def format_verdicts_for_route(verdicts: list[CitationVerdict]) -> str:
+    lines = []
+    for verdict in verdicts:
+        lines.append(
+            f"[citation_id {verdict.citation_id}] status={verdict.status.value} "
+            f"checked_semantically={verdict.checked_semantically} — {verdict.reasoning}"
+        )
+    return "\n".join(lines)
+
+
+def build_route_prompt(question: str, verdicts: list[CitationVerdict]) -> tuple[str, str]:
+    """Returns (system_prompt, user_prompt) for the route decision's
+    structured call."""
+    verdict_blocks = format_verdicts_for_route(verdicts)
+    user_prompt = ROUTE_USER_TEMPLATE.format(question=question, verdict_blocks=verdict_blocks)
+    return ROUTE_SYSTEM_PROMPT, user_prompt

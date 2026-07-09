@@ -1,0 +1,20 @@
+{
+  "id": "verified_04",
+  "category": "verified",
+  "question": "What's the default CORS origin in Hono's cors() middleware?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "This code defaults the CORS origin to '*' (allow all) unless the caller passes an explicit origin option [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/cors.ts",
+        "start_line": 24,
+        "end_line": 31,
+        "symbol": null,
+        "claim": "This code defaults the CORS origin to '*' (allow all) unless the caller passes an explicit origin option."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "verified"}]
+}

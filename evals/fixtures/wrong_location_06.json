@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_06",
+  "category": "wrong_location",
+  "question": "Does Hono's bearer auth middleware rate-limit failed attempts?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "bearerAuth.rateLimiter throttles repeated failed token attempts before returning 401 [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/bearer_auth.ts",
+        "start_line": 62,
+        "end_line": 94,
+        "symbol": "bearerAuth.rateLimiter",
+        "claim": "bearerAuth.rateLimiter throttles repeated failed token attempts before returning 401."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

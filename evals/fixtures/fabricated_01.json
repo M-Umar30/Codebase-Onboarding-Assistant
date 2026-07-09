@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_01",
+  "category": "fabricated",
+  "question": "How does FastAPI refresh an expired OAuth2 access token?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "Token refresh is handled by a dedicated refresh endpoint that re-validates the refresh token and issues a new access token [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/oauth2_refresh.py",
+        "start_line": 1,
+        "end_line": 20,
+        "symbol": null,
+        "claim": "Refreshes an OAuth2 access token using a refresh token grant."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

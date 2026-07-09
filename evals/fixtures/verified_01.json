@@ -1,0 +1,20 @@
+{
+  "id": "verified_01",
+  "category": "verified",
+  "question": "What does HTTPBearer do when auto_error is False and the scheme is wrong?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "HTTPBearer.__call__ returns None instead of raising when auto_error is False and no valid bearer scheme is present [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_bearer.py",
+        "start_line": 65,
+        "end_line": 78,
+        "symbol": "__call__",
+        "claim": "HTTPBearer.__call__ returns None instead of raising when auto_error is False and no valid bearer scheme is present."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "verified"}]
+}

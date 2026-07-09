@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_05",
+  "category": "fabricated",
+  "question": "Does Hono ship an OAuth2 middleware that talks to Google's token introspection endpoint?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "Yes, there's a dedicated OAuth2 middleware for this [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/oauth2.ts",
+        "start_line": 1,
+        "end_line": 30,
+        "symbol": null,
+        "claim": "Hono's OAuth2 middleware validates bearer tokens against Google's token introspection endpoint."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

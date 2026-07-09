@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_08",
+  "category": "fabricated",
+  "question": "Does Hono's basicAuth middleware remember authenticated users across requests?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "basicAuth stores successfully authenticated usernames in a persistent session cookie so subsequent requests skip re-authentication [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/basic_auth.ts",
+        "start_line": 40,
+        "end_line": 70,
+        "symbol": null,
+        "claim": "basicAuth stores successfully authenticated usernames in a persistent session cookie."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

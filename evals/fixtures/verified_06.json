@@ -1,0 +1,20 @@
+{
+  "id": "verified_06",
+  "category": "verified",
+  "question": "What happens if bearerAuth is configured with neither a token nor verifyToken?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "This code throws an error if the middleware is configured with neither a static token nor a verifyToken function [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/bearer_auth.ts",
+        "start_line": 47,
+        "end_line": 49,
+        "symbol": null,
+        "claim": "This code throws an error if the middleware is configured with neither a static token nor a verifyToken function."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "verified"}]
+}

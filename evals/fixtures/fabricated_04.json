@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_04",
+  "category": "fabricated",
+  "question": "Does Hono's bearer auth middleware allow a fixed list of tokens set at startup?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "bearerAuth validates incoming tokens against a fixed allow-list computed once when the middleware is created [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/bearer_auth.ts",
+        "start_line": 30,
+        "end_line": 105,
+        "symbol": null,
+        "claim": "bearerAuth validates the token against a fixed allow-list defined at module load time."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

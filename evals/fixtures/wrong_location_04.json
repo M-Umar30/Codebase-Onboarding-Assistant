@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_04",
+  "category": "wrong_location",
+  "question": "How does cors() handle CORS preflight OPTIONS requests?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "cors.preflight sets Access-Control-Allow-Methods for OPTIONS requests [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/cors.ts",
+        "start_line": 52,
+        "end_line": 55,
+        "symbol": "cors.preflight",
+        "claim": "cors.preflight sets Access-Control-Allow-Methods for OPTIONS requests."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

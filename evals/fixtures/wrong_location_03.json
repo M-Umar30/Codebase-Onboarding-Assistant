@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_03",
+  "category": "wrong_location",
+  "question": "Where does OAuth2 validate requested scopes?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "OAuth2.validate_scopes checks the requested scopes against the configured OAuthFlows [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/oauth2_password_bearer.py",
+        "start_line": 34,
+        "end_line": 41,
+        "symbol": "OAuth2.validate_scopes",
+        "claim": "OAuth2.validate_scopes checks the requested scopes against the configured OAuthFlows."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

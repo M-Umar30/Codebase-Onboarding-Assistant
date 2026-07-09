@@ -1,0 +1,20 @@
+{
+  "id": "verified_02",
+  "category": "verified",
+  "question": "How does HTTPBasic check the Authorization scheme?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "This code reads the Authorization header and checks that its scheme is 'basic' (case-insensitively) [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_basic.py",
+        "start_line": 37,
+        "end_line": 40,
+        "symbol": null,
+        "claim": "This code reads the Authorization header and checks that its scheme is 'basic' (case-insensitively)."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "verified"}]
+}

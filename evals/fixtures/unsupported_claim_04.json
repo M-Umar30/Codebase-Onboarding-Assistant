@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_04",
+  "category": "unsupported_claim",
+  "question": "Does cors() reject requests from disallowed origins?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "This code rejects the request with a 403 response if the Origin header doesn't match an allowed origin [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/cors.ts",
+        "start_line": 52,
+        "end_line": 59,
+        "symbol": null,
+        "claim": "This code rejects the request with a 403 response if the Origin header doesn't match an allowed origin."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

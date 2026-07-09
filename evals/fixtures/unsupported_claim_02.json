@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_02",
+  "category": "unsupported_claim",
+  "question": "What happens when HTTPBasic fails to decode the base64 credentials?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "This block logs the failed decode attempt to an audit log before raising the 401 error [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_basic.py",
+        "start_line": 49,
+        "end_line": 56,
+        "symbol": null,
+        "claim": "This block logs the failed decode attempt to an audit log before raising the 401 error."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

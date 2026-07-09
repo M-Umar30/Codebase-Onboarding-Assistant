@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_07",
+  "category": "fabricated",
+  "question": "Does OAuth2PasswordBearer cache decoded JWT claims for reuse?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "Yes, decoded claims are cached on the request object [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/oauth2_password_bearer.py",
+        "start_line": 45,
+        "end_line": 65,
+        "symbol": null,
+        "claim": "OAuth2PasswordBearer caches decoded JWT claims on the request object for reuse by downstream dependencies."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "fabricated_03",
+  "category": "fabricated",
+  "question": "Does HTTPBearer in FastAPI also accept HTTP Basic credentials?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "Yes, HTTPBearer falls back to validating HTTP Basic credentials through a shared __call__ implementation [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_bearer.py",
+        "start_line": 40,
+        "end_line": 65,
+        "symbol": null,
+        "claim": "HTTPBearer directly validates HTTP Basic credentials via a shared __call__ implementation."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "fabricated"}]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_07",
+  "category": "wrong_location",
+  "question": "Does HTTPBearer support token refresh directly?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "HTTPBearer.refresh exchanges an expired bearer token for a new one via the token endpoint [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_bearer.py",
+        "start_line": 65,
+        "end_line": 78,
+        "symbol": "HTTPBearer.refresh",
+        "claim": "HTTPBearer.refresh exchanges an expired bearer token for a new one via the token endpoint."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

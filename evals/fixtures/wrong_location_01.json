@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_01",
+  "category": "wrong_location",
+  "question": "How does HTTPBearer reject a non-bearer scheme?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "HTTPBearer.__call__ rejects requests whose scheme isn't 'bearer' [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_bearer.py",
+        "start_line": 41,
+        "end_line": 49,
+        "symbol": "HTTPBearer.__call__",
+        "claim": "HTTPBearer.__call__ rejects requests whose scheme isn't 'bearer'."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

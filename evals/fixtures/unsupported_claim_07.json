@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_07",
+  "category": "unsupported_claim",
+  "question": "Does FastAPI report unhandled HTTP exceptions to an error tracker?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "http_exception_handler sends a Sentry error report before returning the JSON response [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "exception_handlers.py",
+        "start_line": 11,
+        "end_line": 17,
+        "symbol": "http_exception_handler",
+        "claim": "http_exception_handler sends a Sentry error report before returning the JSON response."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

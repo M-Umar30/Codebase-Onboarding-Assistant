@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_03",
+  "category": "unsupported_claim",
+  "question": "Does OAuth2PasswordBearer check token expiry?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "OAuth2PasswordBearer.__call__ validates that the bearer token has not expired before returning it [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/oauth2_password_bearer.py",
+        "start_line": 69,
+        "end_line": 77,
+        "symbol": "__call__",
+        "claim": "OAuth2PasswordBearer.__call__ validates that the bearer token has not expired before returning it."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

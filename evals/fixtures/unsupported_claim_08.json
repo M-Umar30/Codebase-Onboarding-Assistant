@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_08",
+  "category": "unsupported_claim",
+  "question": "Does get_authorization_scheme_param normalize the scheme's casing?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "get_authorization_scheme_param lower-cases the scheme before returning it [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/utils.py",
+        "start_line": 1,
+        "end_line": 7,
+        "symbol": "get_authorization_scheme_param",
+        "claim": "get_authorization_scheme_param lower-cases the scheme before returning it."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

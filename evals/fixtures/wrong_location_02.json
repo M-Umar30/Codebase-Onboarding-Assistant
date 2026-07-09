@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_02",
+  "category": "wrong_location",
+  "question": "Where does HTTPBasic reject a non-'basic' scheme?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "HTTPBasic.authenticate checks the scheme is 'basic' and rejects otherwise [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_basic.py",
+        "start_line": 37,
+        "end_line": 48,
+        "symbol": "HTTPBasic.authenticate",
+        "claim": "HTTPBasic.authenticate checks the scheme is 'basic' and rejects otherwise."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "verified_03",
+  "category": "verified",
+  "question": "What does OAuth2PasswordBearer.__call__ actually return?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "OAuth2PasswordBearer.__call__ extracts the bearer token from the Authorization header and returns just the token string, not the full header value [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/oauth2_password_bearer.py",
+        "start_line": 69,
+        "end_line": 77,
+        "symbol": "__call__",
+        "claim": "OAuth2PasswordBearer.__call__ extracts the bearer token from the Authorization header and returns just the token string, not the full header value."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "verified"}]
+}

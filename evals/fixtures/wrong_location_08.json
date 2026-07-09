@@ -1,0 +1,20 @@
+{
+  "id": "wrong_location_08",
+  "category": "wrong_location",
+  "question": "Does FastAPI log validation failures?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "request_validation_exception_handler.logger writes validation failures to the application log before returning the 422 response [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "exception_handlers.py",
+        "start_line": 20,
+        "end_line": 26,
+        "symbol": "request_validation_exception_handler.logger",
+        "claim": "request_validation_exception_handler.logger writes validation failures to the application log before returning the 422 response."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "wrong_location"}]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_01",
+  "category": "unsupported_claim",
+  "question": "Does HTTPBearer verify the token's signature?",
+  "repo": "fastapi",
+  "draft": {
+    "answer_markdown": "HTTPBearer.__call__ verifies the bearer token's signature against the configured JWKS before returning credentials [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "security/http_bearer.py",
+        "start_line": 65,
+        "end_line": 78,
+        "symbol": "__call__",
+        "claim": "HTTPBearer.__call__ verifies the bearer token's signature against the configured JWKS before returning credentials."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}

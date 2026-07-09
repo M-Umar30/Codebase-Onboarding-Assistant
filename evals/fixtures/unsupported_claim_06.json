@@ -1,0 +1,20 @@
+{
+  "id": "unsupported_claim_06",
+  "category": "unsupported_claim",
+  "question": "Does Hono's bearer auth middleware retry a failing header-message callback?",
+  "repo": "hono",
+  "draft": {
+    "answer_markdown": "This code retries the wwwAuthenticateHeader function up to three times if it throws [1].",
+    "citations": [
+      {
+        "id": 1,
+        "file_path": "middleware/bearer_auth.ts",
+        "start_line": 68,
+        "end_line": 72,
+        "symbol": null,
+        "claim": "This code retries the wwwAuthenticateHeader function up to three times if it throws."
+      }
+    ]
+  },
+  "expected": [{"citation_id": 1, "status": "unsupported_claim"}]
+}
