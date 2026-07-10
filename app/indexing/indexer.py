@@ -95,6 +95,20 @@ def index_repo(
             _insert_chunks(conn, batch, vectors)
             chunks_written += len(batch)
 
+        # Record the on-disk root so the ask-time critic can read source files
+        # back (Phase 3). Written after the chunk write so a repos row always
+        # implies a finished index at this path. Native path, not POSIX — the
+        # mechanical layer joins repo_root / file_path.
+        conn.execute(
+            """
+            INSERT INTO repos (repo_id, root_path, indexed_at)
+            VALUES (%s, %s, now())
+            ON CONFLICT (repo_id) DO UPDATE
+            SET root_path = EXCLUDED.root_path, indexed_at = now()
+            """,
+            (repo_id, str(repo_root)),
+        )
+
         return IndexResponse(
             repo_id=repo_id,
             files_indexed=files_indexed,

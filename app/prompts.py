@@ -38,29 +38,46 @@ Retrieved code chunks:
 
 Write the draft answer now, following the rules in your instructions."""
 
+DRAFTER_GUIDANCE_TEMPLATE = """
+
+A reviewer checked your PREVIOUS draft against the actual code and found \
+problems. You MUST fix these in this attempt, using the retrieved chunks above:
+{guidance}"""
+
 
 SYNTHESIZER_SYSTEM_PROMPT = """You are the synthesizer agent in a \
-codebase-onboarding assistant. You receive a draft answer and its citations \
-from the drafter agent and produce the final answer shown to the user.
+codebase-onboarding assistant. You receive a draft answer plus the subset of \
+its citations that survived the critic's verification, and you produce the \
+final answer shown to the user.
 
-Phase-1 note: there is no critic yet, so every citation from the draft is \
-correct and should be kept. Your job is only to renumber citations \
-sequentially starting at 1 in the order they appear in the final answer \
-text, and update the inline [n] markers in the answer text to match the new \
-numbering. Preserve every citation's file_path, start_line, end_line, \
-symbol, and claim exactly as given — do not alter, drop, or add any. Do not \
-add new factual claims. You may lightly tighten wording for clarity.
-
-Leave unverified_notes empty and confidence_caveat null: those fields exist \
-for the critic-integrated pipeline in a later phase."""
+Rules:
+- Use ONLY the verified citations listed below. They are the sole evidence \
+you may present as fact.
+- Any claim in the draft whose citation was DROPPED (listed separately) must \
+NOT appear as fact in your answer — remove it, or rephrase it as an explicit \
+unknown (e.g. "I could not verify where X happens"). Never restate a dropped \
+claim as if it were confirmed.
+- Renumber the verified citations sequentially starting at 1, in the order \
+they first appear in your final answer text, and update the inline [n] \
+markers in the answer text to match. Every [n] marker in your answer must \
+correspond to a returned citation, and every returned citation must be \
+referenced by at least one [n] marker.
+- Copy each verified citation's file_path, start_line, end_line, symbol, and \
+claim EXACTLY as given — only the id may change (from renumbering).
+- Do not invent new citations or new factual claims. You may lightly tighten \
+wording for clarity."""
 
 SYNTHESIZER_USER_TEMPLATE = """Question: {question}
 
-Draft answer:
+Draft answer (its [n] markers use the DRAFT numbering — you will renumber):
 {answer_markdown}
 
-Draft citations (in [n]: file_path:start-end (symbol) — claim form):
-{citations}
+Verified citations — keep these, renumbered 1..n by first appearance \
+(shown as draft_id: file_path:start-end (symbol) — claim):
+{verified}
+
+Dropped citations — their claims must NOT appear as fact in your answer:
+{dropped}
 
 Produce the final answer now, following the rules in your instructions."""
 
@@ -76,30 +93,55 @@ def format_chunks_for_drafter(chunks: list[RetrievedChunk]) -> str:
     return "\n\n".join(blocks)
 
 
-def build_drafter_prompt(question: str, chunks: list[RetrievedChunk]) -> tuple[str, str]:
-    """Returns (system_prompt, user_prompt) for the drafter's structured call."""
+def build_drafter_prompt(
+    question: str, chunks: list[RetrievedChunk], guidance: str | None = None
+) -> tuple[str, str]:
+    """Returns (system_prompt, user_prompt) for the drafter's structured call.
+
+    `guidance` is the critic's regeneration_guidance on a `regenerate` loop —
+    appended to the user prompt (per-attempt data, not a standing instruction)
+    so the drafter fixes what the reviewer flagged.
+    """
     context = format_chunks_for_drafter(chunks)
-    return DRAFTER_SYSTEM_PROMPT, DRAFTER_USER_TEMPLATE.format(question=question, context=context)
+    user_prompt = DRAFTER_USER_TEMPLATE.format(question=question, context=context)
+    if guidance:
+        user_prompt += DRAFTER_GUIDANCE_TEMPLATE.format(guidance=guidance)
+    return DRAFTER_SYSTEM_PROMPT, user_prompt
 
 
-def format_citations_for_synthesizer(draft: DraftAnswer) -> str:
-    lines = []
-    for citation in draft.citations:
-        symbol = f" ({citation.symbol})" if citation.symbol else ""
-        lines.append(
-            f"[{citation.id}]: {citation.file_path}:{citation.start_line}-"
-            f"{citation.end_line}{symbol} — {citation.claim}"
+def _format_citation_line(citation: Citation) -> str:
+    symbol = f" ({citation.symbol})" if citation.symbol else ""
+    return (
+        f"[{citation.id}]: {citation.file_path}:{citation.start_line}-"
+        f"{citation.end_line}{symbol} — {citation.claim}"
+    )
+
+
+def build_synthesizer_prompt(
+    question: str,
+    draft: DraftAnswer,
+    verified: list[Citation],
+    dropped: list[tuple[Citation, CitationVerdict]],
+) -> tuple[str, str]:
+    """Returns (system_prompt, user_prompt) for the synthesizer's structured call.
+
+    `verified` are the citations the critic confirmed; `dropped` pairs each
+    rejected citation with its verdict so the prompt can name what must not be
+    stated as fact. The synthesizer's structured output is renumbered/validated
+    in Python (app/nodes/synthesizer.py) — the prompt only shapes the prose.
+    """
+    verified_block = "\n".join(_format_citation_line(c) for c in verified) or "(none)"
+    dropped_block = (
+        "\n".join(
+            f"{_format_citation_line(c)} [{verdict.status.value}]" for c, verdict in dropped
         )
-    return "\n".join(lines)
-
-
-def build_synthesizer_prompt(question: str, draft: DraftAnswer) -> tuple[str, str]:
-    """Returns (system_prompt, user_prompt) for the synthesizer's structured call."""
-    citations = format_citations_for_synthesizer(draft)
+        or "(none)"
+    )
     user_prompt = SYNTHESIZER_USER_TEMPLATE.format(
         question=question,
         answer_markdown=draft.answer_markdown,
-        citations=citations,
+        verified=verified_block,
+        dropped=dropped_block,
     )
     return SYNTHESIZER_SYSTEM_PROMPT, user_prompt
 

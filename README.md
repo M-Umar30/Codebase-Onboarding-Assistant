@@ -11,8 +11,8 @@ regenerate, or ship the answer.
 - [x] Phase 0 — Skeleton: repo layout, frozen schemas, Postgres+pgvector,
       config, LLM/embedder ports
 - [x] Phase 1 — Dumb-but-working pipeline
-- [ ] Phase 2 — Critic standalone + hallucination fixture set
-- [ ] Phase 3 — Wire the critic loop into LangGraph
+- [x] Phase 2 — Critic standalone + hallucination fixture set
+- [x] Phase 3 — Wire the critic loop into LangGraph
 - [ ] Phase 4 — Planner + syntax-aware chunking
 - [ ] Phase 5 — Hybrid retrieval + ablation
 - [ ] Phase 6 — Ship (FastAPI, CLI polish, incremental re-index, Docker,

@@ -181,9 +181,94 @@ the first draft of this design; both are called out.
   clean score on a hand-built set, not proof of robustness against messier
   real-pipeline drafts (see "Open items" below).
 
+## Phase 3 — Wire the loop
+
+The critic (Phase 2, standalone) is now a LangGraph node whose
+`CriticVerdict.route` drives a conditional edge. This is the project's core
+agentic claim: model output, not an `if attempts < 3`, picks the next edge.
+
+- **`app/graph.py`: the graph, with `GraphState` as a plain `TypedDict`.**
+  Chosen over a Pydantic state model: there's no checkpointer (nothing to
+  serialize) and the state holds frozen Pydantic models as *values*, which a
+  TypedDict carries without re-validating on every merge. The graph is
+  strictly sequential (no parallel branches), so default last-write-wins
+  reducers are correct; `critic_node` appends to `iterations` explicitly
+  (`state["iterations"] + [entry]`). If parallel retrieval is ever added,
+  `iterations`/`retrieved` would need real merge reducers — noted at the
+  `GraphState` definition.
+- **Dependency injection via a closure factory, but nodes call collaborators
+  as module globals.** `_build_graph(settings, conn, embedder, repo_root,
+  index)` captures deps in closures, yet the node bodies call `retrieve` /
+  `draft_answer` / `run_mechanical_checks` / … as `app.graph` globals. That
+  keeps the existing test convention intact: graph tests monkeypatch
+  `app.graph.<name>` exactly like Phase 1's `test_pipeline.py` did, and the
+  integration test lets the real bodies run while patching only each module's
+  `get_chat_model`.
+- **Budget = 3 critic passes total, graph-enforced, and it OVERRULES the
+  model.** `MAX_CRITIC_ITERATIONS = 3` (initial pass + up to 2 loop-backs).
+  The critic always runs and its verdict is always recorded in the trace;
+  when the final allowed pass still returns a non-PROCEED route, the graph
+  overrules it — routes to synthesize with `budget_exhausted=True` — rather
+  than deleting the verdict. So the trace shows *what the model wanted* even
+  when capped. The budget lives only in the graph: never in the schema, never
+  in the critic prompt.
+- **Trace is assembled after `invoke()`, but its data is captured as the graph
+  runs.** `critic_node` appends one `IterationTrace` (iteration number,
+  `chunks_retrieved`, the full `CriticVerdict`) per pass; `ask_with_trace`
+  wraps the accumulated list in the frozen `Trace`. `Trace.plan` is
+  non-optional in the frozen schema but there's no planner until Phase 4, so
+  a single-sub-query placeholder `Plan(decomposed=False, …)` fills it.
+  `models_used` is sourced from `settings.node_config(node).model` for the
+  three nodes that actually run (drafter/critic/synthesizer) — no "planner"
+  key yet.
+- **`guidance` is consumed exactly once.** `draft_node` returns
+  `{"draft": …, "guidance": None}`, clearing the critic's
+  `regeneration_guidance` after one use so a later `re_retrieve` loop doesn't
+  redraft with stale guidance from an earlier `regenerate`. Regression:
+  `test_graph.py::test_guidance_is_not_sticky_across_a_later_reretrieve`.
+- **Multi-query re-retrieval merge.** On `re_retrieve`, `retrieve_node` runs
+  one `retrieve()` per refined query, dedupes by `chunk.id` keeping the max
+  `fused_score`, sorts desc, and caps at `DEFAULT_TOP_K` so drafter context
+  stays bounded across loops. (Cosine scores from different query vectors are
+  only roughly comparable — acceptable pre-RRF; revisited in Phase 5.)
+- **Persistence gap closed: the `repos` table (migration 0002).** The
+  mechanical layer needs the on-disk `repo_root` and the FULL chunk index at
+  ask time, but the frozen `AskRequest` carries only `repo_id`. So
+  `index_repo` now upserts `(repo_id, str(repo_root))` after the chunk write
+  (a repos row implies a finished index), and `app/retrieval/store.py`'s
+  `load_repo_root`/`load_chunks` read them back — loaded once per ask in
+  `ask_with_trace`, not per iteration (nothing writes chunks during an ask).
+  A missing repos row (indexed before Phase 3) or a vanished root path raises
+  `RepoNotIndexedError` at the boundary with a re-index hint, rather than
+  letting every mechanical check fail as a false `FABRICATED` verdict and
+  burning three LLM loops on garbage.
+- **Synthesizer hardening mirrors `route.py`'s splice pattern.** The LLM gets
+  a narrow job (rewrite prose, renumber surviving citations into a local
+  `_SynthesizedAnswer` wrapper without the notes/caveat fields), and every
+  trust-sensitive field is Python-owned: verified/dropped partition from the
+  verdicts, `unverified_notes` built deterministically from dropped citations,
+  `confidence_caveat` set deterministically on budget exhaustion. A
+  post-validation pass (`_validate_synthesis`) enforces that final citations
+  are a subset of the verified set and that inline `[n]` markers line up
+  1..n — folded into the same retry-once-then-fail-loudly path as the semantic
+  and route layers. Zero verified citations short-circuits to an honest "I
+  couldn't verify anything" answer with no LLM call (README policy: "I don't
+  know" beats an unverified guess).
+- **`--show-trace` is ASCII-only.** The trace is the interview demo, but the
+  default Windows console is cp1252 and can't encode box-drawing/arrow glyphs;
+  a demo that raises `UnicodeEncodeError` is worse than a plain one, so
+  `render_trace` uses `-`/`->`/`|` rather than `─`/`→`/`·`.
+- **`pipeline.ask()` survives as a façade.** It keeps the Phase-1 signature
+  (`repo_id, question, settings -> FinalAnswer`) over `ask_with_trace(...).
+  answer`, so nothing that only wants the answer had to change.
+  `test_pipeline.py` was rewritten accordingly — its old monkeypatch targets
+  (`pipeline.retrieve/draft_answer/synthesize_answer`) no longer exist once
+  the composition moved into the graph; graph orchestration coverage lives in
+  `test_graph.py`.
+
 ---
 
-## Cross-cutting patterns (established Phase 0–1, held through Phase 2)
+## Cross-cutting patterns (established Phase 0–1, held through Phase 3)
 
 - `get_chat_model(node_name)` — every LLM call goes through this, never a
   direct SDK import at the node level.

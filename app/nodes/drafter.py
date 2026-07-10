@@ -1,7 +1,8 @@
 """app/nodes/drafter.py — single structured LLM call producing DraftAnswer.
 
-Phase 1: no planner, no critic loop. The question is retrieved against
-directly, and the drafter runs exactly once per `ask` call.
+Runs once per graph iteration. On a critic `regenerate` loop the graph passes
+`guidance` (the critic's regeneration_guidance) so the drafter can fix what the
+reviewer flagged without re-retrieving.
 """
 
 from __future__ import annotations
@@ -18,9 +19,10 @@ def draft_answer(
     question: str,
     retrieved_chunks: list[RetrievedChunk],
     settings: Settings | None = None,
+    guidance: str | None = None,
 ) -> DraftAnswer:
     settings = settings or get_settings()
-    system_prompt, user_prompt = build_drafter_prompt(question, retrieved_chunks)
+    system_prompt, user_prompt = build_drafter_prompt(question, retrieved_chunks, guidance)
 
     model = get_chat_model("drafter", settings).with_structured_output(DraftAnswer)
     return model.invoke([SystemMessage(system_prompt), HumanMessage(user_prompt)])
