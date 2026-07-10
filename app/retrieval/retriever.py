@@ -1,9 +1,10 @@
-"""app/retrieval/retriever.py — Phase 1 dense-only retrieval.
+"""app/retrieval/retriever.py — dense-only retrieval.
 
 pgvector cosine top-k, no lexical side and no real fusion yet: fused_score
-is just dense_score, and every result is attributed to sub_query_id=1
-since Phase 1 has no planner decomposing the question. Phase 5 adds FTS
-and Reciprocal Rank Fusion.
+is just dense_score. Phase 5 adds FTS and Reciprocal Rank Fusion. The graph
+calls this once per planner sub-query, passing that sub-query's id so results
+carry their provenance (RetrievedChunk.sub_query_id); it defaults to 1 for the
+single-query / direct-call case.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ def retrieve(
     settings: Settings | None = None,
     conn=None,
     embedder: Embedder | None = None,
+    sub_query_id: int = 1,
 ) -> list[RetrievedChunk]:
     settings = settings or get_settings()
     embedder = embedder or get_embedder(settings)
@@ -81,7 +83,7 @@ def retrieve(
                 dense_score=float(score),
                 lexical_score=None,
                 fused_score=float(score),
-                sub_query_id=1,
+                sub_query_id=sub_query_id,
             )
         )
     return retrieved

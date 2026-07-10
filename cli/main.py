@@ -107,7 +107,8 @@ def render_trace(trace: Trace) -> None:
 
     n_sub = len(trace.plan.sub_queries)
     noun = "sub-query" if n_sub == 1 else "sub-queries"
-    typer.echo(f"Plan   {n_sub} {noun} (planner arrives in Phase 4)")
+    decision = "decomposed" if trace.plan.decomposed else "single-search (skipped decomposition)"
+    typer.echo(f"Plan   {n_sub} {noun} - {decision}")
     for sub in trace.plan.sub_queries:
         typer.echo(f'       [{sub.id}] "{sub.query}"')
 

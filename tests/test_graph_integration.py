@@ -30,8 +30,10 @@ from app.schemas import (
     CitationStatus,
     CitationVerdict,
     DraftAnswer,
+    Plan,
     Route,
     RetrievedChunk,
+    SubQuery,
 )
 
 REPO_ID = "sabotage-repo"
@@ -124,13 +126,24 @@ def test_sabotaged_retriever_triggers_at_least_one_loop(
     monkeypatch.setattr(graph_module, "load_repo_root", lambda repo_id, conn: tmp_path)
     monkeypatch.setattr(graph_module, "load_chunks", lambda repo_id, conn: index)
 
+    # Planner: skip decomposition so the entry query is the raw question (keeps
+    # the sabotaged retriever's expected [QUESTION, REFINED_QUERY] sequence).
+    single_plan = Plan(
+        decomposed=False,
+        sub_queries=[SubQuery(id=1, query=QUESTION, rationale="single lookup")],
+        reasoning="single-search lookup",
+    )
+    monkeypatch.setattr(graph_module, "plan_question", lambda question, settings=None: single_plan)
+
     # --- sabotaged retriever: wrong-file chunk first, right file afterwards ---
     retrieve_queries: list[str] = []
 
-    def sabotaged_retrieve(repo_id, query, settings=None, conn=None, embedder=None):
+    def sabotaged_retrieve(repo_id, query, settings=None, conn=None, embedder=None, sub_query_id=1):
         retrieve_queries.append(query)
         chunk = unrelated_chunk if len(retrieve_queries) == 1 else auth_chunk
-        return [RetrievedChunk(chunk=chunk, dense_score=0.9, fused_score=0.9, sub_query_id=1)]
+        return [
+            RetrievedChunk(chunk=chunk, dense_score=0.9, fused_score=0.9, sub_query_id=sub_query_id)
+        ]
 
     monkeypatch.setattr(graph_module, "retrieve", sabotaged_retrieve)
 

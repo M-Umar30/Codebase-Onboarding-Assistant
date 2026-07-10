@@ -13,6 +13,9 @@ CLAUDE.md
 
 .env
 
+# Smoke-eval checkouts of the pinned public repos (cloned on demand).
+evals/smoke/.cache/
+
 .vscode/
 .idea/
 

@@ -29,12 +29,24 @@ from app.schemas import (
     DraftAnswer,
     FinalAnswer,
     Language,
+    Plan,
     Route,
     RetrievedChunk,
+    SubQuery,
 )
 
 REPO_ID = "mock-repo"
 QUESTION = "how does auth work here?"
+
+
+def _plan(*queries: str) -> Plan:
+    """A Plan whose sub-queries are `queries` (defaults to the raw question)."""
+    subs = queries or (QUESTION,)
+    return Plan(
+        decomposed=len(subs) > 1,
+        sub_queries=[SubQuery(id=i, query=q, rationale="test") for i, q in enumerate(subs, start=1)],
+        reasoning="scripted plan",
+    )
 
 
 # --------------------------------------------------------------- builders
@@ -104,21 +116,34 @@ class _ScriptedRoute:
 class _Harness:
     """Installs all graph-boundary fakes and records calls."""
 
-    def __init__(self, monkeypatch: pytest.MonkeyPatch, route_script: list[CriticVerdict]) -> None:
+    def __init__(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        route_script: list[CriticVerdict],
+        plan: Plan | None = None,
+    ) -> None:
         self.retrieve_calls: list[tuple[str, str]] = []
+        self.retrieve_sub_query_ids: list[int] = []
         self.draft_calls: list[tuple[str, list, str | None]] = []
         self.synth_calls: list[tuple[str, list, bool]] = []
         self.route = _ScriptedRoute(route_script)
+
+        # Planner: return a scripted Plan (default mirrors the raw question) so
+        # the graph entry is deterministic and no LLM runs.
+        plan = plan or _plan()
+        monkeypatch.setattr(graph_module, "plan_question", lambda question, settings=None: plan)
 
         # No DB.
         monkeypatch.setattr(graph_module, "load_repo_root", lambda repo_id, conn: Path("/fake/root"))
         monkeypatch.setattr(graph_module, "load_chunks", lambda repo_id, conn: [])
 
         # Retrieval: one chunk per query, id/score keyed off the query so
-        # dedupe/sort are observable.
-        def fake_retrieve(repo_id, query, settings=None, conn=None, embedder=None):
+        # dedupe/sort are observable. sub_query_id is threaded through by the
+        # graph's fan-out and recorded here.
+        def fake_retrieve(repo_id, query, settings=None, conn=None, embedder=None, sub_query_id=1):
             self.retrieve_calls.append((repo_id, query))
-            return self._chunks_for_query(query)
+            self.retrieve_sub_query_ids.append(sub_query_id)
+            return self._chunks_for_query(query, sub_query_id)
 
         monkeypatch.setattr(graph_module, "retrieve", fake_retrieve)
 
@@ -142,7 +167,7 @@ class _Harness:
 
         monkeypatch.setattr(graph_module, "synthesize_answer", fake_synth)
 
-    def _chunks_for_query(self, query: str) -> list[RetrievedChunk]:
+    def _chunks_for_query(self, query: str, sub_query_id: int = 1) -> list[RetrievedChunk]:
         # Overlapping ids across queries so the dedupe path is exercised in the
         # re_retrieve test: "q1" -> {a,b}, "q2" -> {b,c}.
         table = {
@@ -151,7 +176,8 @@ class _Harness:
             "q2": [_retrieved("b", 0.6), _retrieved("c", 0.7)],
             "fix X": [_retrieved("a", 0.9)],
         }
-        return table.get(query, [_retrieved("a", 0.9)])
+        chunks = table.get(query, [_retrieved("a", 0.9)])
+        return [rc.model_copy(update={"sub_query_id": sub_query_id}) for rc in chunks]
 
 
 def _run(monkeypatch, route_script):
@@ -181,6 +207,7 @@ class TestRouting:
         assert trace.budget_exhausted is False
         assert trace.plan.sub_queries[0].query == QUESTION
         assert trace.models_used == {
+            "planner": "llama-3.3-70b-versatile",
             "drafter": "llama-3.3-70b-versatile",
             "critic": "gpt-4o-mini",
             "synthesizer": "gpt-4o-mini",
@@ -196,9 +223,10 @@ class TestRouting:
         # initial question, then q1 + q2 on the loop
         assert harness.retrieve_calls == [(REPO_ID, QUESTION), (REPO_ID, "q1"), (REPO_ID, "q2")]
         # second draft got the merged/deduped chunks: {a,b,c}, sorted by score desc
-        # retrieve_node rebuilds from state["queries"] each call, so the loop
-        # sees only q1+q2 (not the original question). Merge keeps max score
-        # per id: a=0.5, b=max(0.8,0.6)=0.8, c=0.7 -> sorted desc.
+        # retrieve_node rebuilds from state["sub_queries"] each call (the critic's
+        # refined queries), so the loop sees only q1+q2 (not the original
+        # question). Merge keeps max score per id: a=0.5, b=max(0.8,0.6)=0.8,
+        # c=0.7 -> sorted desc.
         second_draft_chunks = harness.draft_calls[1][1]
         ids = [rc.chunk.id for rc in second_draft_chunks]
         assert ids == ["b", "c", "a"]
@@ -264,3 +292,30 @@ class TestRouting:
             ask_with_trace(REPO_ID, QUESTION, settings=settings, conn=object())
 
         assert harness.retrieve_calls == []  # nothing ran
+
+
+class TestPlannerFanOut:
+    def test_retriever_fans_out_over_sub_queries_with_provenance(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A decomposed plan of two sub-queries: the retriever is called once per
+        # sub-query, tagged with that sub-query's id.
+        harness = _Harness(monkeypatch, [_verdict(Route.PROCEED)], plan=_plan("q1", "q2"))
+        settings = Settings(_env_file=None, openai_api_key="k", groq_api_key="k")
+
+        response = ask_with_trace(REPO_ID, QUESTION, settings=settings, conn=object(), embedder=None)
+
+        # one retrieve() per sub-query, each carrying its sub_query_id
+        assert harness.retrieve_calls == [(REPO_ID, "q1"), (REPO_ID, "q2")]
+        assert harness.retrieve_sub_query_ids == [1, 2]
+
+        # merged chunks keep provenance: q1 -> {a,b}, q2 -> {b,c}; b is deduped
+        # to the higher-scoring q1 copy (0.8 > 0.6), so it stays sub_query_id=1.
+        by_id = {rc.chunk.id: rc for rc in harness.draft_calls[0][1]}
+        assert by_id["a"].sub_query_id == 1
+        assert by_id["b"].sub_query_id == 1
+        assert by_id["c"].sub_query_id == 2
+
+        # the plan carried into the trace is the decomposed one
+        assert response.trace.plan.decomposed is True
+        assert [s.id for s in response.trace.plan.sub_queries] == [1, 2]

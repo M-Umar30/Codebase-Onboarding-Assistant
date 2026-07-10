@@ -1,0 +1,104 @@
+{
+  "repos": {
+    "smoke-fastapi": {
+      "name": "fastapi",
+      "url": "https://github.com/fastapi/fastapi.git",
+      "tag": "0.139.0",
+      "commit": "cecd96d9c6c318e0df1c40cedbc2e953381ddfd3",
+      "path_env": "SMOKE_FASTAPI_PATH",
+      "source_subdir": "fastapi"
+    },
+    "smoke-hono": {
+      "name": "hono",
+      "url": "https://github.com/honojs/hono.git",
+      "tag": "v4.12.28",
+      "commit": "626b185d0e80fa1c2a3cc1a8945afd0df6aaf3ec",
+      "path_env": "SMOKE_HONO_PATH",
+      "source_subdir": "src"
+    }
+  },
+  "questions": [
+    {
+      "id": "fastapi_http_bearer",
+      "repo_id": "smoke-fastapi",
+      "question": "How does HTTP Bearer authentication read and validate the Authorization header?",
+      "expected_files": [
+        "security/http.py",
+        "security/utils.py"
+      ]
+    },
+    {
+      "id": "fastapi_http_basic",
+      "repo_id": "smoke-fastapi",
+      "question": "How is HTTP Basic authentication implemented and how are the username and password decoded?",
+      "expected_files": [
+        "security/http.py"
+      ]
+    },
+    {
+      "id": "fastapi_oauth2_password_bearer",
+      "repo_id": "smoke-fastapi",
+      "question": "How does OAuth2PasswordBearer extract the bearer token from a request?",
+      "expected_files": [
+        "security/oauth2.py"
+      ]
+    },
+    {
+      "id": "fastapi_api_key",
+      "repo_id": "smoke-fastapi",
+      "question": "How are API keys read from a header, query parameter, or cookie?",
+      "expected_files": [
+        "security/api_key.py"
+      ]
+    },
+    {
+      "id": "fastapi_exception_handlers",
+      "repo_id": "smoke-fastapi",
+      "question": "How are request validation errors turned into an HTTP response?",
+      "expected_files": [
+        "exception_handlers.py"
+      ]
+    },
+    {
+      "id": "fastapi_dependencies",
+      "repo_id": "smoke-fastapi",
+      "question": "How does the solve_dependencies function resolve a request's dependencies?",
+      "expected_files": [
+        "dependencies/utils.py"
+      ]
+    },
+    {
+      "id": "hono_basic_auth",
+      "repo_id": "smoke-hono",
+      "question": "How does the basic auth middleware verify the username and password?",
+      "expected_files": [
+        "middleware/basic-auth/index.ts"
+      ]
+    },
+    {
+      "id": "hono_bearer_auth",
+      "repo_id": "smoke-hono",
+      "question": "How does the bearer auth middleware validate the token from the Authorization header?",
+      "expected_files": [
+        "middleware/bearer-auth/index.ts"
+      ]
+    },
+    {
+      "id": "hono_cors",
+      "repo_id": "smoke-hono",
+      "question": "How does the CORS middleware set the Access-Control-Allow-Origin and related headers?",
+      "expected_files": [
+        "middleware/cors/index.ts"
+      ]
+    },
+    {
+      "id": "hono_jwt",
+      "repo_id": "smoke-hono",
+      "question": "How does the JWT middleware verify and decode a token?",
+      "expected_files": [
+        "middleware/jwt/jwt.ts",
+        "utils/jwt/jwt.ts"
+      ]
+    }
+  ]
+}

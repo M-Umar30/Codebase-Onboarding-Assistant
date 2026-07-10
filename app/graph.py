@@ -11,8 +11,9 @@ on the final allowed iteration is overruled and routed to synthesize with
 budget_exhausted=True. The trace therefore shows what the model *wanted* even
 when the graph capped it.
 
-No planner yet (Phase 4): the entry query is the raw question. Trace.plan is a
-single-sub-query placeholder so the frozen (non-optional) schema is satisfied.
+The planner (Phase 4) is the entry node: it decides decompose-or-skip and emits
+the sub_queries that the retriever fans out over (tagging each RetrievedChunk
+with its sub_query_id). Its Plan is carried straight into Trace.plan.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from app.critic.semantic import run_semantic_checks
 from app.db import get_connection
 from app.embeddings import Embedder
 from app.nodes.drafter import draft_answer
+from app.nodes.planner import plan_question
 from app.nodes.synthesizer import synthesize_answer
 from app.retrieval.retriever import DEFAULT_TOP_K, retrieve
 from app.retrieval.store import load_chunks, load_repo_root
@@ -54,6 +56,7 @@ MAX_CRITIC_ITERATIONS = 3
 
 # Nodes named for the graph. Note: the Route enum values ("re_retrieve",
 # "regenerate") are NOT node names — the conditional edge maps them explicitly.
+_PLAN = "plan"
 _RETRIEVE = "retrieve"
 _DRAFT = "draft"
 _CRITIC = "critic"
@@ -63,12 +66,15 @@ _SYNTHESIZE = "synthesize"
 class GraphState(TypedDict):
     """The graph runs strictly sequentially (no parallel branches), so plain
     last-write-wins reducers are correct; the critic node appends to
-    `iterations` explicitly. If parallel retrieval is ever added, `iterations`
-    and `retrieved` would need real merge reducers."""
+    `iterations` explicitly. The retriever fans out over sub_queries inside a
+    single node (a Python loop, not parallel graph branches), so this holds. If
+    parallel retrieval branches are ever added, `iterations` and `retrieved`
+    would need real merge reducers."""
 
     question: str
     repo_id: str
-    queries: list[str]  # current retrieval queries; [question] at entry, overwritten by refined_queries
+    plan: Plan | None  # the planner's decompose-or-skip decision; also carried into Trace.plan
+    sub_queries: list[SubQuery]  # current retrieval sub-queries; the planner's at entry, the critic's refined ones on re_retrieve
     retrieved: list[RetrievedChunk]
     draft: DraftAnswer | None
     guidance: str | None  # pending regeneration_guidance; consumed (cleared) by the draft node
@@ -90,15 +96,28 @@ def _build_graph(
     retrieve/draft_answer/etc. as module globals (not the captured names) so
     tests monkeypatch app.graph.<name> exactly like test_pipeline.py did."""
 
+    def plan_node(state: GraphState) -> dict:
+        # Entry node: the planner's decompose-or-skip decision seeds the
+        # sub_queries the retriever fans out over.
+        plan = plan_question(state["question"], settings=settings)
+        return {"plan": plan, "sub_queries": plan.sub_queries}
+
     def retrieve_node(state: GraphState) -> dict:
-        # One retrieve() per query; dedupe by chunk id keeping the max fused
-        # score; cap at DEFAULT_TOP_K so drafter context stays bounded across
-        # loops. (Scores from different query vectors are only roughly
-        # comparable — acceptable at Phase 3, revisited with real RRF in 5.)
+        # One retrieve() per sub-query, tagging results with that sub-query's id;
+        # dedupe by chunk id keeping the max fused score (the winner keeps its own
+        # sub_query_id); cap at DEFAULT_TOP_K so drafter context stays bounded
+        # across loops. This fan-out is a sequential loop inside one node, so the
+        # last-write-wins reducers stay correct. (Scores from different query
+        # vectors are only roughly comparable — revisited with real RRF in 5.)
         merged: dict[str, RetrievedChunk] = {}
-        for query in state["queries"]:
+        for sub_query in state["sub_queries"]:
             for rc in retrieve(
-                state["repo_id"], query, settings=settings, conn=conn, embedder=embedder
+                state["repo_id"],
+                sub_query.query,
+                settings=settings,
+                conn=conn,
+                embedder=embedder,
+                sub_query_id=sub_query.id,
             ):
                 existing = merged.get(rc.chunk.id)
                 if existing is None or rc.fused_score > existing.fused_score:
@@ -134,7 +153,13 @@ def _build_graph(
             "budget_exhausted": budget_exhausted,
         }
         if verdict.route is Route.RE_RETRIEVE:
-            updates["queries"] = verdict.refined_queries
+            # The critic's refined queries become the next pass's sub-queries.
+            # Ids are re-numbered 1..n for this pass; iterations stay distinct in
+            # the trace, so reusing the id space per pass is unambiguous.
+            updates["sub_queries"] = [
+                SubQuery(id=i, query=q, rationale="critic-refined re-retrieval")
+                for i, q in enumerate(verdict.refined_queries, start=1)
+            ]
         elif verdict.route is Route.REGENERATE:
             updates["guidance"] = verdict.regeneration_guidance
         return updates
@@ -150,12 +175,14 @@ def _build_graph(
         return {"final": final}
 
     builder = StateGraph(GraphState)
+    builder.add_node(_PLAN, plan_node)
     builder.add_node(_RETRIEVE, retrieve_node)
     builder.add_node(_DRAFT, draft_node)
     builder.add_node(_CRITIC, critic_node)
     builder.add_node(_SYNTHESIZE, synthesize_node)
 
-    builder.add_edge(START, _RETRIEVE)
+    builder.add_edge(START, _PLAN)
+    builder.add_edge(_PLAN, _RETRIEVE)
     builder.add_edge(_RETRIEVE, _DRAFT)
     builder.add_edge(_DRAFT, _CRITIC)
     builder.add_conditional_edges(
@@ -178,22 +205,6 @@ def _route_after_critic(state: GraphState) -> str:
     if verdict.route is Route.RE_RETRIEVE:
         return _RETRIEVE
     return _DRAFT  # Route.REGENERATE
-
-
-def _placeholder_plan(question: str) -> Plan:
-    """No planner until Phase 4 — the question is the single retrieval query.
-    Fills Trace.plan (non-optional in the frozen schema)."""
-    return Plan(
-        decomposed=False,
-        sub_queries=[
-            SubQuery(
-                id=1,
-                query=question,
-                rationale="No planner until Phase 4; the question is used verbatim as the single query.",
-            )
-        ],
-        reasoning="Planner not yet built (Phase 4). The raw question is the sole retrieval query.",
-    )
 
 
 def ask_with_trace(
@@ -219,7 +230,8 @@ def ask_with_trace(
             {
                 "question": question,
                 "repo_id": repo_id,
-                "queries": [question],
+                "plan": None,
+                "sub_queries": [],
                 "retrieved": [],
                 "draft": None,
                 "guidance": None,
@@ -235,12 +247,12 @@ def ask_with_trace(
             conn.close()
 
     trace = Trace(
-        plan=_placeholder_plan(question),
+        plan=result["plan"],
         iterations=result["iterations"],
         budget_exhausted=result["budget_exhausted"],
         models_used={
             node: settings.node_config(node).model
-            for node in ("drafter", "critic", "synthesizer")
+            for node in ("planner", "drafter", "critic", "synthesizer")
         },
     )
     return AskResponse(answer=result["final"], trace=trace)

@@ -1,9 +1,11 @@
-"""app/indexing/indexer.py — Phase 1 indexing pipeline: walk -> chunk -> embed -> store.
+"""app/indexing/indexer.py — indexing pipeline: walk -> chunk -> embed -> store.
 
-No incremental re-index yet (Phase 6): every `index_repo` call re-embeds the
-whole repo and replaces that repo_id's rows. `files_skipped_unchanged` is
-therefore always 0 here — the field exists in IndexResponse for Phase 6 to
-start reporting real numbers into.
+Chunking is syntax-aware (tree-sitter) for Python/TS/TSX and line-based for
+everything else; `fallback_language_files` reports how many files took the
+line-based path. No incremental re-index yet (Phase 6): every `index_repo`
+call re-embeds the whole repo and replaces that repo_id's rows (a full
+drop-and-rebuild), so `files_skipped_unchanged` is always 0 here — the field
+exists in IndexResponse for Phase 6 to start reporting real numbers into.
 """
 
 from __future__ import annotations
@@ -14,9 +16,9 @@ from pathlib import Path
 from app.config import Settings, get_settings
 from app.db import get_connection
 from app.embeddings import Embedder, get_embedder
-from app.indexing.chunker import chunk_text
+from app.indexing.syntax_chunker import chunk_file
 from app.indexing.walker import iter_source_files
-from app.schemas import CodeChunk, IndexResponse
+from app.schemas import CodeChunk, IndexResponse, Language
 
 EMBED_BATCH_SIZE = 64
 
@@ -73,6 +75,7 @@ def index_repo(
 
         all_chunks: list[CodeChunk] = []
         files_indexed = 0
+        fallback_files = 0
         for file_path in iter_source_files(repo_root):
             rel_path = file_path.relative_to(repo_root).as_posix()
             try:
@@ -80,11 +83,15 @@ def index_repo(
             except (UnicodeDecodeError, OSError):
                 continue
 
-            file_chunks = chunk_text(repo_id, rel_path, text)
+            file_chunks = chunk_file(repo_id, rel_path, text)
             if not file_chunks:
                 continue
             all_chunks.extend(file_chunks)
             files_indexed += 1
+            # A file took the line-based fallback iff none of its chunks got a
+            # syntax-aware language (unsupported extension, or a parse failure).
+            if all(c.language is Language.OTHER for c in file_chunks):
+                fallback_files += 1
 
         conn.execute("DELETE FROM chunks WHERE repo_id = %s", (repo_id,))
 
@@ -114,7 +121,7 @@ def index_repo(
             files_indexed=files_indexed,
             files_skipped_unchanged=0,
             chunks_written=chunks_written,
-            fallback_language_files=files_indexed,
+            fallback_language_files=fallback_files,
         )
     finally:
         if owns_conn:

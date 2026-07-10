@@ -8,6 +8,42 @@ from __future__ import annotations
 
 from app.schemas import Citation, CitationVerdict, DraftAnswer, RetrievedChunk
 
+PLANNER_SYSTEM_PROMPT = """You are the planner agent in a codebase-onboarding \
+assistant. You receive one question about an unfamiliar codebase and decide how \
+to retrieve evidence for it. Retrieval is dense + lexical search over code \
+chunks, so sub-queries should read like search queries a developer would type — \
+concrete identifiers, symbols, and behaviors — not restatements of the question.
+
+Decide between two modes:
+- SKIP decomposition (`decomposed = false`) for a narrow lookup that maps to a \
+single search: "where is `refresh_token` validated", "what does `CORSMiddleware` \
+do", a single-symbol or single-file question. Return exactly ONE sub-query.
+- DECOMPOSE (`decomposed = true`) for a broad question that spans several parts \
+of the codebase: "how does auth work here?" touches routes, middleware, and \
+token validation. Break it into 2-4 focused sub-queries, each targeting one \
+facet, so retrieval can gather evidence for every part.
+
+Rules:
+- Prefer skipping. Only decompose when the question genuinely has multiple \
+distinct facets that separate searches would serve better than one.
+- Each sub-query must be independently searchable and name concrete things \
+(function names, class names, concepts) likely to appear in the code.
+- `reasoning` briefly explains the decompose-or-skip choice.
+- Do not answer the question or invent file names — you only plan retrieval.
+"""
+
+PLANNER_USER_TEMPLATE = """Question: {question}
+
+Decide whether to decompose, and emit the sub-queries, following the rules in \
+your instructions."""
+
+
+def build_planner_prompt(question: str) -> tuple[str, str]:
+    """Returns (system_prompt, user_prompt) for the planner's structured call.
+    The planner's output is validated and its sub-query ids are assigned in
+    Python (app/nodes/planner.py) — the prompt only shapes the decision."""
+    return PLANNER_SYSTEM_PROMPT, PLANNER_USER_TEMPLATE.format(question=question)
+
 DRAFTER_SYSTEM_PROMPT = """You are the drafter agent in a codebase-onboarding \
 assistant. You answer questions about an unfamiliar codebase using ONLY the \
 retrieved code chunks given to you as context — never invent file paths, \
